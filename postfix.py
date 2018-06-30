@@ -21,8 +21,13 @@ class TokenVar(Token):
         value = float(value)
         super(TokenVar, self).__init__(value)
 
-    def __str__(self):
-        return str(self.value)
+
+class TokenParenthOpen(Token):
+    pass
+
+
+class TokenParenthClose(Token):
+    pass
 
 
 class TokenOperator(Token):
@@ -36,6 +41,14 @@ class TokenOperatorPlus(TokenOperator):
 
 class TokenOperatorMinus(TokenOperator):
     priority = 2
+
+
+class TokenOperatorMultiply(TokenOperator):
+    priority = 3
+
+
+class TokenOperatorDivide(TokenOperator):
+    priority = 3
 
 
 class TokenOperatorNegative(TokenOperator):
@@ -58,8 +71,14 @@ class Converter(object):
     OPERATORS = {
         '+': TokenOperatorPlus,
         '-': TokenOperatorMinus,
+        '*': TokenOperatorMultiply,
+        '/': TokenOperatorDivide,
     }
     SPACES = {' ', "\n", "\t"}
+    PARENTHESIS = {
+        '(': TokenParenthOpen,
+        ')': TokenParenthClose,
+    }
 
     def __init__(self, formula: str):
         self._input = formula
@@ -76,19 +95,24 @@ class Converter(object):
                 pos += 1
                 continue
 
-            if ch in self.OPERATORS:
+            if ch in self.OPERATORS or ch in self.PARENTHESIS:
                 if token_value:
                     token = TokenVar(token_value)
                     break
                 else:
                     token_value = self._input[pos]
-                    op_class = self.OPERATORS[ch]
+                    if ch in self.OPERATORS:
+                        op_class = self.OPERATORS[ch]
+                    else:
+                        op_class = self.PARENTHESIS[ch]
                     token = op_class(token_value)
                     pos += 1
                     break
 
             if ch.isdigit() or ch == '.':
                 token_value += ch
+            else:
+                raise ValueError('Unknown symbol {0}'.format(ch))
 
             pos += 1
 
@@ -115,6 +139,18 @@ class Converter(object):
                     result.append(token)
                     break
 
+                if isinstance(token, TokenParenthOpen):
+                    stack.append(token)
+                    break
+
+                if isinstance(token, TokenParenthClose):
+                    while stack and not isinstance(stack[-1], TokenParenthOpen):
+                        result.append(stack.pop())
+                    if not stack or not isinstance(stack[-1], TokenParenthOpen):
+                        raise ValueError('Closing parenthesis without opening')
+                    stack.pop()
+                    break
+
                 if isinstance(token, TokenOperator):
                     if prev_token is None or isinstance(prev_token, TokenOperator):
                         if not isinstance(token, (TokenOperatorPositive, TokenOperatorNegative)):
@@ -139,7 +175,9 @@ class Converter(object):
             prev_token = token
 
         if stack:
-            for i in range(len(stack) -1, -1, -1):
+            for i in range(len(stack) - 1, -1, -1):
+                if not isinstance(stack[i], TokenOperator):
+                    raise ValueError('Missing closing parenthesis')
                 result.append(stack[i])
 
         return PostfixExpression(result)
