@@ -4,6 +4,35 @@ class PostfixExpression(object):
     def __init__(self, _expr: list):
         self._expression = _expr
 
+    def eval(self) -> float:
+        stack = []
+        for item in self._expression:
+            if isinstance(item, TokenVar):
+                stack.append(item.value)
+                continue
+            if isinstance(item, TokenOperatorNegative):
+                stack[-1] = -stack[-1]
+                continue
+            if isinstance(item, TokenOperatorPositive):
+                continue
+            if isinstance(item, (TokenOperatorPlus, TokenOperatorMinus, TokenOperatorMultiply, TokenOperatorDivide)):
+                b = stack.pop()
+                a = stack.pop()
+                if isinstance(item, TokenOperatorPlus):
+                    stack.append(a + b)
+                    continue
+                if isinstance(item, TokenOperatorMinus):
+                    stack.append(a - b)
+                    continue
+                if isinstance(item, TokenOperatorMultiply):
+                    stack.append(a * b)
+                    continue
+                if isinstance(item, TokenOperatorDivide):
+                    stack.append(a / b)
+                    continue
+
+        return stack[-1]
+
     def __str__(self):
         return ','.join(map(str, self._expression))
 
@@ -14,6 +43,9 @@ class Token(object):
 
     def __str__(self):
         return str(self.value)
+
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, str(self.value))
 
 
 class TokenVar(Token):
