@@ -38,6 +38,22 @@ class TokenOperatorMinus(TokenOperator):
     priority = 2
 
 
+class TokenOperatorNegative(TokenOperator):
+    binary = False
+    priority = 10
+
+    def __str__(self):
+        return '(%s)' % str(self.value)
+
+
+class TokenOperatorPositive(TokenOperator):
+    binary = False
+    priority = 10
+
+    def __str__(self):
+        return '(%s)' % str(self.value)
+
+
 class Converter(object):
     OPERATORS = {
         '+': TokenOperatorPlus,
@@ -92,6 +108,7 @@ class Converter(object):
     def convert(self) -> PostfixExpression:
         stack = []
         result = []
+        prev_token = None
         for token in self._tokens_iterator():
             while token:
                 if isinstance(token, TokenVar):
@@ -99,6 +116,16 @@ class Converter(object):
                     break
 
                 if isinstance(token, TokenOperator):
+                    if prev_token is None or isinstance(prev_token, TokenOperator):
+                        if not isinstance(token, (TokenOperatorPositive, TokenOperatorNegative)):
+                            if not isinstance(token, (TokenOperatorMinus, TokenOperatorPlus)):
+                                raise ValueError('Got unknown unar operator {0}'.format(token))
+                            if isinstance(token, TokenOperatorPlus):
+                                token = TokenOperatorPositive(token.value)
+                            else:
+                                token = TokenOperatorNegative(token.value)
+                            continue
+
                     if stack:
                         stack_top = stack[-1]
                         if isinstance(stack_top, TokenOperator):
@@ -108,6 +135,8 @@ class Converter(object):
 
                     stack.append(token)
                     break
+
+            prev_token = token
 
         if stack:
             for i in range(len(stack) -1, -1, -1):
